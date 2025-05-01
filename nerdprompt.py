@@ -245,7 +245,6 @@ def main():
     config_eater = ConfigEater()
     config = config_eater.parse_config()
     config_eater.check_config( ansi_codes, config)
-   
     try:
         # Load environment variables from .env file
         load_dotenv()
@@ -265,9 +264,17 @@ def main():
         logging.error('Usage: python ask_perplexity.py "your question here"')
     try:
         perplexity_client = PerplexityWrapper(YOUR_API_KEY)
+
+    except Exception as e:
+        logging.error(f"API Client Error: {e}")
+        traceback.print_exc() 
         
+def main_loop(your_question, perplexity_client):   
+    try:
         response = perplexity_client.client(config, your_question)
         content = response.choices[0].message.content
+        print(content)
+        unformatted_content = content
         doc_wo_code = perplexity_client.code_extractor(content)
         
         doc_no_code_str = doc_wo_code['text'] #doc without code
@@ -288,10 +295,26 @@ def main():
 
         doc_with_code = perplexity_client.code_injector(doc_wo_code)
         no_citation_ansi_text = perplexity_client.remove_citations(doc_with_code)
-        print(no_citation_ansi_text)
+        print(unformatted_content)
+        return no_citation_ansi_text , unformatted_content
     except Exception as e:
         print(f"An error occurred: {e}")
         traceback.print_exc() 
+
+while True:
+    ansi_content, unformatted_content = main_loop( your_question, perplexity_client)
+    user_input = input(config['nerdprompt_prompt']).strip().lower()
+    if user_input == 'u':
+        print("unformatted response")
+        print(unformatted_content)
+        break  # Clean exit
+    elif user_input == 'c':
+        print("Continuing thread")
+        # Place your main logic here
+        break  # Exit loop if you want to proceed after valid input
+    else:
+        print("Error: Invalid input. Please enter 'u' or 'c'.")  # Show error and re-prompt
+
     
 if __name__ == "__main__":
     
